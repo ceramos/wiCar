@@ -14,6 +14,8 @@ Writing and complie using CCSv6
 Android app
 
 ## Contributors
+Pham Van Tuong ~phamtongbk999@gmail.com
+Le Thien Duc
 
 ## Tests
 This project is under building. It's not tested
