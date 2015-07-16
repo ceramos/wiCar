@@ -2,23 +2,23 @@
 Control mobile car via Samsung galaxy using ESP8266
 
 ## HW:
-Drv8801 + MSP430G2553
-ESP8266 wifi module
-Car kit
-Samsung Galaxy S5
+* Drv8801 + MSP430G2553
+* ESP8266 wifi module
+* Car kit
+* Samsung Galaxy S5
 
 ## FW: ~In progress
-Writing and complie using CCSv6
+* Writing and complie using CCSv6
 
 ## SW: ~In progress
-Android app
+* Android app
 
 ## Contributors
-Pham Van Tuong ~phamtongbk999@gmail.com
-Le Thien Duc
+* Pham Van Tuong ~phamtongbk999@gmail.com
+* Le Thien Duc
 
 ## Tests
-This project is under building. It's not tested
+* This project is under contruction. It's not tested
 
 ## License
 	The MIT License (MIT)
