@@ -2,8 +2,7 @@
 # wiCar
 Control mobile car via Samsung galaxy using ESP8266
 Author:
-1.Pham Van Tuong - phamtuongbk999@gmail.com
-2.Le Thien Duc
+Pham Van Tuong (phamtuongbk999@gmail.com) and Le Thien Duc
 ====================================================
 HW:
 Drv8801 + MSP430G2553
