@@ -37,6 +37,17 @@
 
 #include "msp430g2553.h"
 
+/*
+	This function is used to generate PWM pulse
+	Params:	duty cycle : 0 - 100%
+	Return: None
+*/
+void PWM_Out(unsigned int duty);
+
+/*
+	Seting up ESP8266 WIFI module
+*/
+void ESP_Setup(void);
 
 
 

@@ -38,14 +38,44 @@
 /*	
 		Declare variables
  */
-volatile unsigned int count=0;
- 
-volatile unsigned int tx_flag;			//Mailbox Flag for the tx_char.
+//extern volatile unsigned int count=0;
+
+
+#define FIFO_SIZE 512
+
+#ifndef UART_RX_BUFFER_SIZE
+#define UART_RX_BUFFER_SIZE 	64
+#endif
+
+#ifndef UART_TX_BUFFER_SIZE
+#define UART_TX_BUFFER_SIZE 	128
+#endif
+
+
+#define UART_RX_BUFFER_MASK (UART_RX_BUFFER_SIZE - 1)
+#define UART_TX_BUFFER_MASK (UART_TX_BUFFER_SIZE - 1)
+
 volatile unsigned char tx_char;			//This char is the most current char to go into the UART
 
 volatile unsigned int rx_flag;			//Mailbox Flag for the rx_char.
 volatile unsigned char rx_char;			//This char is the most current char to come out of the UART
 
+volatile unsigned char tx_fifo[UART_TX_BUFFER_SIZE];	//The array for the tx fifo
+volatile unsigned char rx_fifo[UART_RX_BUFFER_SIZE];    //The array for the rx fifo
+
+volatile unsigned int tx_fifo_head;			//Theses pointers keep track where the UART and the Main program are in the Fifos
+volatile unsigned int tx_fifo_tail;
+volatile unsigned int rx_fifo_head;
+volatile unsigned int rx_fifo_tail;
+
+volatile unsigned int rx_fifo_full;
+volatile unsigned int tx_fifo_full;
+
+unsigned char	wifi_esp;
+
+
+
+ 
 
 /*	$description: this function initilize system clock - DCO 1MHz
  * 	$function name:	System_Clock
@@ -64,29 +94,51 @@ void System_Clock(void) {
  * 	$return: none
  */
 void Peripheral_Initialization(void) {
-	Timer_Initialization();
+	//Timer_Initialization();
+	PWM_Initialization()
 	GPIO_Initialization();
 }
 
 
-void Timer_Initialization(void) {
-	// Timer
-	// Count up mode
-	// Using interrupt
-	// Timing 1ms
-	TA0CTL = 0;					// Stop all
+// void Timer_Initialization(void) {
+// 	// Timer
+// 	// Count up mode
+// 	// Using interrupt
+// 	// Timing 1ms
+// 	TA0CTL = 0;					// Stop all
 
-	//TA0CTL = TASSEL_1 | ID_0;	// ACLK + Div 1 and Stop mode
+// 	//TA0CTL = TASSEL_1 | ID_0;	// ACLK + Div 1 and Stop mode
 
-	TA0CTL |= TACLR;			// Clear all to start with
+// 	TA0CTL |= TACLR;			// Clear all to start with
 
-	TA0CCR0 = (FREQ / TICK_RATE_KHZ) - 1;
+// 	TA0CCR0 = (FREQ / TICK_RATE_KHZ) - 1;
 
-	TACCTL0 |= CCIE;				// Enable Interrupt
+// 	TACCTL0 |= CCIE;				// Enable Interrupt
 
 
-	TA0CTL |= TASSEL_2 | MC_1 | ID_0;	// Up mode and start timer
+// 	TA0CTL |= TASSEL_2 | MC_1 | ID_0;	// Up mode and start timer
+// }
+
+/*
+	PWM frequency 	: 20kHz ~ 50us
+	Timer frequende : 8Mhz/4 ~ 0.5us
+	=> CCRx = (50us/0.5us) - 1 = 99
+	
+
+*/
+void PWM_Initialization(void) {
+	P1DIR |= BIT6;                            // P1.2 and P1.3 output
+  	P1SEL |= BIT6;                            // P1.2 and P1.3 TA1/2 options
+  	TA0CTL = 0;								  // Stop all
+  	TA0CTL |= TACLR;						  // Clear all to start with
+  	CCR0 = 99;                                // CCR0 is period
+  	  	  	  	  	  	  	  	  	  	  	  // See p365, slau144j
+  	CCTL1 = OUTMOD_7;                         // CCR1 reset/set
+  	//CCR1 = 15625;                           // CCR1 PWM duty cycle
+  	//TACTL = TASSEL_2 + MC_1 + ID_2;           // SMCLK, up mode
+  	TACTL = TASSEL_2 + MC_0 + ID_2;           // SMCLK, Div 4 , STOP
 }
+
 
 
 void GPIO_Initialization(void) {
@@ -116,21 +168,38 @@ void UART_Initiaization(void) {
 	IE2 |= UCA0RXIE; 					//Enable USCI_A0 RX interrupt
 
 	rx_flag = 0;						//Set rx_flag to 0
-	tx_flag = 0;						//Set tx_flag to 0
+
+	tx_fifo_head = 0;					//Set the fifo pointers to 0
+	tx_fifo_tail = 0;
+	rx_fifo_head = 0;
+	rx_fifo_tail = 0;
+
+	//tx_fifo_full = 0;
+	//rx_fifo_full = 0;
+
 }
 
-/*	$description: Get a char from the UART. Waits till it gets one
- * 	$function name:	UART_Initiaization
- * 	$prams: none
- * 	$return: Char from UART
- */
-unsigned char UART_Getc()				//Waits for a valid char from the UART
+/*****************************************************************************/
+
+/*uart_getc
+* Get a char from the UART. Waits till it gets one
+* INPUT: None
+* RETURN: Char from UART
+*/
+unsigned char uart_getc()					//Waits for a valid char from the UART
 {
-	while (rx_flag == 0);		 		//Wait for rx_flag to be set
-	rx_flag = 0;						//ACK rx_flag
-    return rx_char;
+	unsigned char c;
+	if(rx_fifo_head == rx_fifo_tail)	// Check: Is Head = Tail?
+	{
+		c = '\0'
+	}
+	else
+	{
+		rx_fifo_tail = (rx_fifo_tail + 1) & UART_RX_BUFFER_MASK
+		c = rx_fifo[rx_fifo_tail];
+	}	
+    return c;
 }
-
 
 /*	$description: Get a string of known length from the UART. 
 				  Strings terminate when enter is pressed or string buffer fills
@@ -140,7 +209,8 @@ unsigned char UART_Getc()				//Waits for a valid char from the UART
  * 	$prams: Array pointer and length
  * 	$return: None
  */
-void UART_Gets(char* Array, int length)
+/*
+ void uart_gets(char* Array, int length)
 {
 	unsigned int i = 0;
 
@@ -160,6 +230,7 @@ void UART_Gets(char* Array, int length)
 
     return;
 }
+*/
 
 
 /*	$description: Sends a char to the UART. Will wait if the UART is busy
@@ -167,13 +238,17 @@ void UART_Gets(char* Array, int length)
  * 	$prams: Char to send
  * 	$return: none
  */
-void UART_Putc(unsigned char c)
+void uart_putc(unsigned char c)
 {
-	tx_char = c;						//Put the char into the tx_char
-	IE2 |= UCA0TXIE; 					//Enable USCI_A0 TX interrupt
-	while(tx_flag == 1);				//Have to wait for the TX buffer
-	tx_flag = 1;						//Reset the tx_flag
-	return;
+	unsigned char tmpHead;			// A temp pointer point to Head
+	
+	tmpHead = (tx_fifo_head + 1) & UART_TX_BUFFER_MASK;
+	while(tmpHead == tx_fifo_tail);	// wait for free space
+	
+	tx_fifo[tmpHead] = c;			// Put data to buffer
+	tx_fifo_head = tmpHead;			// Now, move pointer to new Head
+	
+	IE2 |= UCA0TXIE; 				//Enable USCI_A0 TX interrupt
 }
 
 
@@ -182,12 +257,18 @@ void UART_Putc(unsigned char c)
  * 	$prams: Pointer to String to send
  * 	$return: none
  */
-void UART_Puts(char *str)				//Sends a String to the UART.
+void uart_puts(char *str)						//Sends a String to the UART.
 {
-     while(*str) uart_putc(*str++);		//Advance though string till end
-     return;
+     //while(*str) uart_putc(*str++);			//Advance though string till end
+    unsigned char tmpHead;
+	while(*str)
+	{
+		tmpHead = (tx_fifo_head + 1) & UART_TX_BUFFER_MASK;	// Get new head
+		while(tmpHead == tx_fifo_tail);			//wait for free space in buffer 
+		
+		
+	}
 }
-
 
 
 
@@ -195,27 +276,40 @@ void UART_Puts(char *str)				//Sends a String to the UART.
 	Interrupt routines
 */
 
-#pragma vector=TIMER0_A0_VECTOR
-__interrupt void TIMER_INTERRUPT(void)
-{
-   //TACCTL0 &= ~CCIFG;			// Clear interrupt flag
-	count++;
-	if(count == 500)
-	{
+// #pragma vector=TIMER0_A0_VECTOR
+// __interrupt void TIMER_INTERRUPT(void)
+// {
+//    //TACCTL0 &= ~CCIFG;			// Clear interrupt flag
+// 	count++;
+// 	if(count == 500)
+// 	{
 
-		LED_OUT ^= LED_2;
-		count=0;
-	}
-}
+// 		LED_OUT ^= LED_2;
+// 		count=0;
+// 	}
+// }
+
+/******************************************************************************
+*******************************************************************************
+							INTERRUPT ROUTINE
+*******************************************************************************
+******************************************************************************/
 
 
-
-#pragma vector = USCIAB0TX_VECTOR		//UART TX USCI Interrupt
+#pragma vector = USCIAB0TX_VECTOR			//UART TX USCI Interrupt
 __interrupt void USCI0TX_ISR(void)
 {
-	UCA0TXBUF = tx_char;				//Copy char to the TX Buffer
-	tx_flag = 0;						//ACK the tx_flag
-	IE2 &= ~UCA0TXIE; 					//Turn off the interrupt to save CPU
+	UCA0TXBUF = tx_fifo[tx_fifo_ptB];		//Copy the fifo into the TX buffer
+	tx_fifo_ptB++;
+
+	if(tx_fifo_ptB == FIFO_SIZE)			//Roll the fifo pointer over
+	{
+		tx_fifo_ptB = 0;
+	}
+    if(tx_fifo_ptB == tx_fifo_ptA)			//Fifo pointers the same no new data to transmit
+    {
+    	IE2 &= ~UCA0TXIE; 					//Turn off the interrupt to save CPU
+    }
 }
 
 #pragma vector = USCIAB0RX_VECTOR		//UART RX USCI Interrupt. This triggers when the USCI receives a char.
@@ -224,5 +318,22 @@ __interrupt void USCI0RX_ISR(void)
 	rx_char = UCA0RXBUF;				//Copy from RX buffer, in doing so we ACK the interrupt as well
 	rx_flag = 1;						//Set the rx_flag to 1
 
-	P1OUT ^= LED;						//Notify that we received a char by toggling LED
+	rx_fifo[rx_fifo_ptB] = rx_char;		//Copy the rx_char into the fifo
+	rx_fifo_ptB++;
+
+	if(rx_fifo_ptB == FIFO_SIZE)		//Roll the fifo pointer over
+	{
+		rx_fifo_ptB = 0;
+	}
+
+	if(rx_fifo_ptB == rx_fifo_ptA)		//fifo full
+	{
+		rx_fifo_full = 1;
+	}
+	else
+	{
+		rx_fifo_full = 0;
+	}
+
+	//P1OUT ^= LED;						//Notify that we received a char by toggling LED
 }

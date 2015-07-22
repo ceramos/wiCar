@@ -41,7 +41,44 @@
 */
 
  
- 
 /*
 		Function define
 */
+
+/*
+	This function is used to generate PWM pulse
+	Params:	duty cycle : 0 - 100%
+	Return: None
+*/
+void PWM_Out(unsigned int duty) {
+	// Check
+	if((duty <= 100) && (duty >= 0)) {
+		CCR1  = duty;			// CCR1/CCR0 = duty
+		TACTL = MC_1;           // Upmode
+	}
+	else
+		break;	
+}
+
+/*****************************************************************************/
+void ESP_Setup(void) {
+	unsigned char OK = 0;
+	char *oks = "OK"
+	char *nc  = "no change";
+	int mem_loop;
+
+	do {
+		uart_puts("AT+RST");
+    	uart_puts("\r\n");
+    	//delay_ms(4000); 
+    	uart_puts("ATE0");
+    	uart_puts("\r\n");
+    	//delay_ms(1000);
+
+    	for (int mem_loop = 0; mem_loop <= 150 ;mem_loop++) {
+    		
+    	}
+
+
+	}
+}

@@ -51,35 +51,41 @@
 #define		WIFI_TX		(BIT1)	/* P1.1 */
 #define		WIFI_RX		(BIT2)	/* P1.2 */
 
-#define 	LED_1		BIT0
-#define 	LED_2		BIT6
-#define 	LED_DIR 	P1DIR
-#define 	LED_OUT		P1OUT
 
 void System_Clock(void);
 void Peripheral_Initialization(void);
 void Timer_Initialization(void);
+void PWM_Initialization(void);
 void GPIO_Initialization(void);
 void ADC10_Initialization(void);
 void UART_Initiaization(void);
 
-/* Copyright The Longhorn Engineer (c) 2013 */
+/*****************************************************************************/
 /*rx_flag
 * This flag is to be used by other modules to check and see if a new transmission has happened.
 * This is READ ONLY. Do not write to it or the UART may crash.
 */
 extern volatile unsigned int rx_flag;
 
-/*
-	Receive and Transmission data funtions
+/*rx_fifo_full
+* This flag is to be used by other modules to check and see if the rx fifo is full.
+* This is READ ONLY. Do not write to it or the UART may crash.
 */
-unsigned char UART_Getc();
+extern volatile unsigned int rx_fifo_full;
 
-void UART_Gets();
+/*tx_fifo_full
+* This flag is to be used by other modules to check and see if the rx fifo is full.
+* This is READ ONLY. Do not write to it or the UART may crash.
+*/
+extern volatile unsigned int tx_fifo_full;
 
-void UART_Putc(unsigned char c);
 
-void UART_Puts(char *str);
+unsigned char uart_getc();
 
+void uart_gets();
+
+void uart_putc(unsigned char c);
+
+void uart_puts(char *str);
 
 #endif /* DRIVERS_H_ */
