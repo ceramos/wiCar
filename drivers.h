@@ -37,8 +37,8 @@
 
 #include "msp430g2553.h"
 
-#define 	FREQ		(unsigned int)1000	/* 1MHz	*/
-#define 	TICK_RATE_KHZ	(unsigned int)1		/* 1ms Timing */
+#define 	FREQ		(uint16)1000	/* 1MHz	*/
+#define 	TICK_RATE_KHZ	(uint16)1		/* 1ms Timing */
 
 #define		BAUDRATE	(9600)
 
@@ -50,6 +50,14 @@
 
 #define		WIFI_TX		(BIT1)	/* P1.1 */
 #define		WIFI_RX		(BIT2)	/* P1.2 */
+
+#ifndef UART_RX_BUFFER_SIZE
+#define UART_RX_BUFFER_SIZE 	64
+#endif
+
+#ifndef UART_TX_BUFFER_SIZE
+#define UART_TX_BUFFER_SIZE 	128
+#endif
 
 
 void System_Clock(void);
@@ -65,26 +73,26 @@ void UART_Initiaization(void);
 * This flag is to be used by other modules to check and see if a new transmission has happened.
 * This is READ ONLY. Do not write to it or the UART may crash.
 */
-extern volatile unsigned int rx_flag;
+extern volatile uint16 rx_flag;
 
 /*rx_fifo_full
 * This flag is to be used by other modules to check and see if the rx fifo is full.
 * This is READ ONLY. Do not write to it or the UART may crash.
 */
-extern volatile unsigned int rx_fifo_full;
+extern volatile uint16 rx_fifo_full;
 
 /*tx_fifo_full
 * This flag is to be used by other modules to check and see if the rx fifo is full.
 * This is READ ONLY. Do not write to it or the UART may crash.
 */
-extern volatile unsigned int tx_fifo_full;
+extern volatile uint16 tx_fifo_full;
 
 
-unsigned char uart_getc();
+uint8 uart_getc();
 
 void uart_gets();
 
-void uart_putc(unsigned char c);
+void uart_putc(uint8 c);
 
 void uart_puts(char *str);
 

@@ -35,20 +35,20 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
-#include "msp430g2553.h"
+//#include "msp430g2553.h"
 
 /*
 	This function is used to generate PWM pulse
 	Params:	duty cycle : 0 - 100%
 	Return: None
 */
-void PWM_Out(unsigned int duty);
+void PWM_Out(uint16 duty);
 
 /*
 	Seting up ESP8266 WIFI module
 */
 void ESP_Setup(void);
 
-
+void Join_AP(void);
 
 #endif /* APPLICATION_H_ */

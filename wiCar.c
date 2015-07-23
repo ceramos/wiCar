@@ -33,7 +33,9 @@
  */
 
 #include "msp430g2553.h"
+#include "typedef.h"
 #include "drivers.h"
+#include "application.h"
 #include "interrupts.h"
 
 // Global variables
@@ -57,6 +59,7 @@ int main(void) {
 
 	while(1){
 		// Do something
+		PWM_Out(50);
 	}
 }
 

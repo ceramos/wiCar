@@ -33,45 +33,42 @@
  */
 
 #include "msp430g2553.h"
+#include "typedef.h"
 #include "drivers.h"
 
 /*	
 		Declare variables
  */
-//extern volatile unsigned int count=0;
+//extern volatile uint16 count=0;
 
 
 #define FIFO_SIZE 512
 
-#ifndef UART_RX_BUFFER_SIZE
-#define UART_RX_BUFFER_SIZE 	64
-#endif
 
-#ifndef UART_TX_BUFFER_SIZE
-#define UART_TX_BUFFER_SIZE 	128
-#endif
 
 
 #define UART_RX_BUFFER_MASK (UART_RX_BUFFER_SIZE - 1)
 #define UART_TX_BUFFER_MASK (UART_TX_BUFFER_SIZE - 1)
 
-volatile unsigned char tx_char;			//This char is the most current char to go into the UART
+volatile uint8 tx_char;			//This char is the most current char to go into the UART
 
-volatile unsigned int rx_flag;			//Mailbox Flag for the rx_char.
-volatile unsigned char rx_char;			//This char is the most current char to come out of the UART
+volatile uint16 rx_flag;			//Mailbox Flag for the rx_char.
+volatile uint8 rx_char;			//This char is the most current char to come out of the UART
 
-volatile unsigned char tx_fifo[UART_TX_BUFFER_SIZE];	//The array for the tx fifo
-volatile unsigned char rx_fifo[UART_RX_BUFFER_SIZE];    //The array for the rx fifo
+char tx_fifo[UART_TX_BUFFER_SIZE];	//The array for the tx fifo
+char rx_fifo[UART_RX_BUFFER_SIZE];    //The array for the rx fifo
 
-volatile unsigned int tx_fifo_head;			//Theses pointers keep track where the UART and the Main program are in the Fifos
-volatile unsigned int tx_fifo_tail;
-volatile unsigned int rx_fifo_head;
-volatile unsigned int rx_fifo_tail;
+volatile uint16 tx_fifo_head;			//Theses pointers keep track where the UART and the Main program are in the Fifos
+volatile uint16 tx_fifo_tail;
+volatile uint16 rx_fifo_head;
+volatile uint16 rx_fifo_tail;
 
-volatile unsigned int rx_fifo_full;
-volatile unsigned int tx_fifo_full;
+volatile uint16 rx_fifo_full;
+volatile uint16 tx_fifo_full;
 
-unsigned char	wifi_esp;
+volatile uint16 UART_NewEvent;
+
+
 
 
 
@@ -95,8 +92,8 @@ void System_Clock(void) {
  */
 void Peripheral_Initialization(void) {
 	//Timer_Initialization();
-	PWM_Initialization()
-	GPIO_Initialization();
+	PWM_Initialization();
+//	GPIO_Initialization();
 }
 
 
@@ -141,10 +138,10 @@ void PWM_Initialization(void) {
 
 
 
-void GPIO_Initialization(void) {
-    LED_DIR = LED_1 + LED_2;			//Enable LED
-    LED_OUT = LED_1 + LED_2;			//All off
-}
+//void GPIO_Initialization(void) {
+//    LED_DIR = LED_1 + LED_2;			//Enable LED
+//    LED_OUT = LED_1 + LED_2;			//All off
+//}
 
 
 void ADC10_Initialization(void);
@@ -186,16 +183,16 @@ void UART_Initiaization(void) {
 * INPUT: None
 * RETURN: Char from UART
 */
-unsigned char uart_getc()					//Waits for a valid char from the UART
+uint8 uart_getc()					//Waits for a valid char from the UART
 {
-	unsigned char c;
+	uint8 c;
 	if(rx_fifo_head == rx_fifo_tail)	// Check: Is Head = Tail?
 	{
-		c = '\0'
+		c = '\0';
 	}
 	else
 	{
-		rx_fifo_tail = (rx_fifo_tail + 1) & UART_RX_BUFFER_MASK
+		rx_fifo_tail = (rx_fifo_tail + 1) & UART_RX_BUFFER_MASK;
 		c = rx_fifo[rx_fifo_tail];
 	}	
     return c;
@@ -212,7 +209,7 @@ unsigned char uart_getc()					//Waits for a valid char from the UART
 /*
  void uart_gets(char* Array, int length)
 {
-	unsigned int i = 0;
+	uint16 i = 0;
 
 	while((i < length))					//Grab data till the array fills
 	{
@@ -238,9 +235,9 @@ unsigned char uart_getc()					//Waits for a valid char from the UART
  * 	$prams: Char to send
  * 	$return: none
  */
-void uart_putc(unsigned char c)
+void uart_putc(uint8 c)
 {
-	unsigned char tmpHead;			// A temp pointer point to Head
+	uint8 tmpHead;			// A temp pointer point to Head
 	
 	tmpHead = (tx_fifo_head + 1) & UART_TX_BUFFER_MASK;
 	while(tmpHead == tx_fifo_tail);	// wait for free space
@@ -260,17 +257,27 @@ void uart_putc(unsigned char c)
 void uart_puts(char *str)						//Sends a String to the UART.
 {
      //while(*str) uart_putc(*str++);			//Advance though string till end
-    unsigned char tmpHead;
+    uint8 tmpHead;
 	while(*str)
 	{
 		tmpHead = (tx_fifo_head + 1) & UART_TX_BUFFER_MASK;	// Get new head
 		while(tmpHead == tx_fifo_tail);			//wait for free space in buffer 
 		
-		
+		tx_fifo[tmpHead] = *str++;				// Now moving to new data
+		tx_fifo_head = tmpHead;					// Moving to new position 
 	}
+	// Enable TX interrupt
+	IE2 |= UCA0TXIE;
 }
 
 
+
+
+/******************************************************************************
+*******************************************************************************
+							INTERRUPT ROUTINE
+*******************************************************************************
+******************************************************************************/
 
 /*	
 	Interrupt routines
@@ -289,51 +296,33 @@ void uart_puts(char *str)						//Sends a String to the UART.
 // 	}
 // }
 
-/******************************************************************************
-*******************************************************************************
-							INTERRUPT ROUTINE
-*******************************************************************************
-******************************************************************************/
-
 
 #pragma vector = USCIAB0TX_VECTOR			//UART TX USCI Interrupt
 __interrupt void USCI0TX_ISR(void)
 {
-	UCA0TXBUF = tx_fifo[tx_fifo_ptB];		//Copy the fifo into the TX buffer
-	tx_fifo_ptB++;
-
-	if(tx_fifo_ptB == FIFO_SIZE)			//Roll the fifo pointer over
+	if(tx_fifo_head != tx_fifo_tail)
 	{
-		tx_fifo_ptB = 0;
+		tx_fifo_tail = (tx_fifo_tail + 1) & UART_TX_BUFFER_MASK;
+		UCA0TXBUF = tx_fifo[tx_fifo_tail];	// Transmit data 		
 	}
-    if(tx_fifo_ptB == tx_fifo_ptA)			//Fifo pointers the same no new data to transmit
-    {
-    	IE2 &= ~UCA0TXIE; 					//Turn off the interrupt to save CPU
-    }
+	else
+	{
+		IE2 &= ~UCA0TXIE; 					//Turn off the interrupt to save CPUIE2 &= ~UCA0TXIE; 					//Turn off the interrupt to save CPU
+	}  
 }
 
 #pragma vector = USCIAB0RX_VECTOR		//UART RX USCI Interrupt. This triggers when the USCI receives a char.
 __interrupt void USCI0RX_ISR(void)
 {
-	rx_char = UCA0RXBUF;				//Copy from RX buffer, in doing so we ACK the interrupt as well
-	rx_flag = 1;						//Set the rx_flag to 1
-
-	rx_fifo[rx_fifo_ptB] = rx_char;		//Copy the rx_char into the fifo
-	rx_fifo_ptB++;
-
-	if(rx_fifo_ptB == FIFO_SIZE)		//Roll the fifo pointer over
+	//rx_char = UCA0RXBUF;				//Copy from RX buffer, in doing so we ACK the interrupt as well
+	
+	rx_fifo_head = (rx_fifo_head + 1) & UART_RX_BUFFER_MASK;
+	rx_fifo[rx_fifo_head] = UCA0RXBUF;
+	
+	if(rx_fifo_head ==  rx_fifo_tail)
 	{
-		rx_fifo_ptB = 0;
+		//UART_BUFFER_OVERFLOW
 	}
-
-	if(rx_fifo_ptB == rx_fifo_ptA)		//fifo full
-	{
-		rx_fifo_full = 1;
-	}
-	else
-	{
-		rx_fifo_full = 0;
-	}
-
-	//P1OUT ^= LED;						//Notify that we received a char by toggling LED
+	
+	UART_NewEvent = TRUE;
 }
