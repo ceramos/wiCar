@@ -54,6 +54,7 @@ char  wifi_buff[512];
 unsigned char	wifi_esp;
 uint16 	count=0;
 
+
 /*
 		Function define
 */
@@ -66,8 +67,8 @@ uint16 	count=0;
 void PWM_Out(uint16 duty) {
 	// Check
 	if((duty < 100) && (duty > 0)) {
-		CCR1  = duty;			// CCR1/CCR0 = duty
-		TACTL = MC_1;           // Upmode
+		CCR1 = duty;
+		TA0CTL |= TASSEL_2 + MC_1 + ID_2 + TAIE;           // SMCLK, Div 4 ,
 	}
 }
 

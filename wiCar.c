@@ -39,7 +39,7 @@
 #include "interrupts.h"
 
 // Global variables
-
+volatile uint16 iii=0;
 
 
 // Local variables
@@ -57,9 +57,11 @@ int main(void) {
 
 	__enable_interrupt();				//Interrupts Enabled
 
+
 	while(1){
 		// Do something
-		PWM_Out(50);
+		PWM_Out(70);
+		__delay_cycles(1000);
 	}
 }
 

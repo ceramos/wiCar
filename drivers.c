@@ -70,7 +70,7 @@ volatile uint16 UART_NewEvent;
 
 
 
-
+extern volatile uint16 iii;
 
  
 
@@ -130,10 +130,7 @@ void PWM_Initialization(void) {
   	TA0CTL |= TACLR;						  // Clear all to start with
   	CCR0 = 99;                                // CCR0 is period
   	  	  	  	  	  	  	  	  	  	  	  // See p365, slau144j
-  	CCTL1 = OUTMOD_7;                         // CCR1 reset/set
-  	//CCR1 = 15625;                           // CCR1 PWM duty cycle
-  	//TACTL = TASSEL_2 + MC_1 + ID_2;           // SMCLK, up mode
-  	TACTL = TASSEL_2 + MC_0 + ID_2;           // SMCLK, Div 4 , STOP
+  	CCTL1 |= OUTMOD_7 + CCIE;                  // CCR1 reset/set
 }
 
 
@@ -283,18 +280,22 @@ void uart_puts(char *str)						//Sends a String to the UART.
 	Interrupt routines
 */
 
-// #pragma vector=TIMER0_A0_VECTOR
-// __interrupt void TIMER_INTERRUPT(void)
-// {
-//    //TACCTL0 &= ~CCIFG;			// Clear interrupt flag
-// 	count++;
-// 	if(count == 500)
-// 	{
+#pragma vector=TIMER0_A1_VECTOR
+__interrupt void TIMER_INTERRUPT(void)
+{
+	switch(TAIV)
+	{
+		case 2:
+			//count++;
+			TACTL = 0;	// Stop
+			break;
+		case 10:
+			break;
+		default:
+			break;
 
-// 		LED_OUT ^= LED_2;
-// 		count=0;
-// 	}
-// }
+	}
+}
 
 
 #pragma vector = USCIAB0TX_VECTOR			//UART TX USCI Interrupt
