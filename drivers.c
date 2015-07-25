@@ -128,7 +128,7 @@ void PWM_Initialization(void) {
   	P1SEL |= BIT6;                            // P1.2 and P1.3 TA1/2 options
   	TA0CTL = 0;								  // Stop all
   	TA0CTL |= TACLR;						  // Clear all to start with
-  	CCR0 = 99;                                // CCR0 is period
+  	CCR0 = 9999;                                // CCR0 is period---------200Hz
   	  	  	  	  	  	  	  	  	  	  	  // See p365, slau144j
   	CCTL1 |= OUTMOD_7 + CCIE;                  // CCR1 reset/set
 }

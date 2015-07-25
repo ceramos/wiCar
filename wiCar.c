@@ -60,7 +60,7 @@ int main(void) {
 
 	while(1){
 		// Do something
-		PWM_Out(70);
+		PWM_Out(5000);
 		__delay_cycles(1000);
 	}
 }

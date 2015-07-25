@@ -66,7 +66,7 @@ uint16 	count=0;
 */
 void PWM_Out(uint16 duty) {
 	// Check
-	if((duty < 100) && (duty > 0)) {
+	if((duty < 10000) && (duty > 0)) {
 		CCR1 = duty;
 		TA0CTL |= TASSEL_2 + MC_1 + ID_2 + TAIE;           // SMCLK, Div 4 ,
 	}
